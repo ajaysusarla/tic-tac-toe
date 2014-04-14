@@ -11,7 +11,7 @@ endif
 CC = gcc
 EXTRA_CFLAGS = -Wall -O
 DEBUG = -ggdb
-LIBS = -lncurses
+LIBS = -lncurses -lm
 CFLAGS = $(DEBUG) $(EXTRA_CFLAGS) $(OSFLAGS)
 DEFS = -DPACKAGE=$(PACKAGE) -DVERSION=$(VERSION) -DTIOCGWINSZ
 

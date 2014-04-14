@@ -24,58 +24,47 @@
 #include <libgen.h>
 #include <term.h>
 #include <sys/ioctl.h>
+#include <math.h>
+
+typedef enum {
+	ELEMENT_TYPE_X,
+	ELEMENT_TYPE_O,
+	ELEMENT_TYPE_NONE,
+	NUM_ELEMENTS,
+} ElementType;
+
+typedef struct {
+	WINDOW *element;
+	ElementType type;
+	int xoff;
+	int yoff;
+} Grid;
 
 struct _ttt {
+	const char *title;
+	WINDOW *border;
 	WINDOW *board;
-	WINDOW *title;
 	WINDOW *msg;
+	Grid grid[3][3];
+	int cur_x;
+	int cur_y;
 };
 
 typedef struct _ttt ttt;
 
-/* screen size*/
-static void get_screensize_using_termcap(short *widthp, short *heightp)
-{
-        *widthp = 0;
-        *heightp = 0;
+#define DEG_TO_RAD(deg) (deg * (180.0f/M_PI))
+#define ELEMENT_HT 9
+#define ELEMENT_WD 20
 
-        if ((*heightp = (short)tgetnum("li")) == -1) {
-                fprintf(stderr, "Failed to get termcap entry for lines\n");
-                return;
-        }
-
-        if ((*widthp = (short)tgetnum("co")) == -1) {
-                fprintf(stderr, "Failed to get termcap entry for columns\n");
-                return;
-        }
-}
-
-static void get_screensize_using_ioctl(int *widthp, int *heightp)
-{
-#ifdef TIOCGWINSZ
-        struct winsize size;
-
-        *widthp = 0;
-        *heightp = 0;
-
-        if (ioctl(0, TIOCGWINSZ, &size) < 0)
-                return;
-
-        *widthp = size.ws_col;
-        *heightp = size.ws_row;
-#else
-        *widthp = 0;
-        *heightp = 0;
-#endif
-}
-
+/* Keys */
+#define KEY_ESC 27
 
 /* help */
 /* Long options. */
 static struct option long_options [] = {
-  { "help", no_argument, NULL, 'h' },
-  { "version", no_argument, NULL, 'V' },
-  { NULL, 0, NULL, 0 }
+	{ "help", no_argument, NULL, 'h' },
+	{ "version", no_argument, NULL, 'V' },
+	{ NULL, 0, NULL, 0 }
 };
 
 static void usage(char *program_name)
@@ -94,13 +83,13 @@ static void help(char *program_name)
         printf("**  Instructions  **\n\n");
         printf("    KEY         -       ACTION\n");
         printf("----------------------------------\n");
-        printf("Left Arrow  :  Move left.\n");
-        printf("Right Arrow :  Move right.\n");
-        printf("Up Arrow    :  Move up.\n");
-        printf("Down Arrow  :  Move down.\n");
-        printf("Enter       :  Select entry.\n");
-        printf("p/P         :  Pause the game.\n");
-        printf("q/Q/C-c/Esc :  Quit the game.\n");
+        printf("Left Arrow  (or) A :  Move left.\n");
+        printf("Right Arrow (or) D :  Move right.\n");
+        printf("Up Arrow    (or) W :  Move up.\n");
+        printf("Down Arrow  (or) S :  Move down.\n");
+        printf("Enter              :  Select entry.\n");
+        printf("p/P                :  Pause the game.\n");
+        printf("q/Q/C-c/Esc        :  Quit the game.\n");
 
         printf("\n");
 
@@ -184,6 +173,12 @@ static int screen_init(void)
 		return -1;
 	}
 
+	if (getmaxx(stdscr) < 140 && getmaxy(stdscr) < 40) {
+		endwin();
+		fprintf(stderr, "we need screensize more than 140x40\n");
+		return -1;
+	}
+
 	keypad(stdscr, TRUE);  /* Enable keypad for the user's terminal */
 	nodelay(stdscr, TRUE); /* non-blocking mode*/
 	cbreak();              /* Read single input chars, without waiting for \n*/
@@ -205,6 +200,24 @@ static void termination_handler(int sig)
 	exit(EXIT_SUCCESS);
 }
 
+/*
+ * Set window to attribute 'attr'
+ */
+static void _window_attr_clear(WINDOW * win, int height, int width, chtype attr)
+{
+        int i, j;
+
+        wattrset(win, attr);
+
+        for (i = 0; i < height; i++) {
+                wmove(win, i, 0);
+                for (j = 0; j < width; j++)
+                        waddch(win, ' ');
+        }
+
+        touchwin(win);
+}
+
 static void _window_draw_box(WINDOW *win,
 			     int y, int x,
 			     int height, int width,
@@ -212,17 +225,16 @@ static void _window_draw_box(WINDOW *win,
 {
 	int i, j;
 
-	wattrset(win, 0);
 	for (i = 0; i < height; i++) {
 		wmove(win, y + i, x);
-		for (j = 0; j < width -2; j++)
+		for (j = 0; j < width - 2; j++)
 			if (!i && !j)
 				waddch(win, border | ACS_ULCORNER);
 			else if (i == height - 1 && !j)
 				waddch(win, border | ACS_LLCORNER);
 			else if (!i && j == width - 3)
 				waddch(win, box | ACS_URCORNER);
-			else if (i == height - 1 && j == width - 1)
+			else if (i == height - 1 && j == width - 3)
 				waddch(win, box | ACS_LRCORNER);
 			else if (!i)
 				waddch(win, border | ACS_HLINE);
@@ -237,10 +249,256 @@ static void _window_draw_box(WINDOW *win,
 	}
 }
 
+static void _window_clear(ttt *t)
+{
+	_window_attr_clear(stdscr, LINES, COLS, A_NORMAL);
+
+        if (t->title != NULL) {
+                int i;
+
+                wattrset(stdscr, A_BOLD);
+                mvwaddstr(stdscr, 0, 1, (char *)t->title);
+                wmove(stdscr, 1, 1);
+                for (i = 1; i < COLS - 1; i++)
+                        waddch(stdscr, ACS_HLINE);
+        }
+        wnoutrefresh(stdscr);
+}
+
+
+static void draw_o(Grid *element)
+{
+	float deg, w, h;
+	int y, x;
+
+	wattrset(element->element, A_STANDOUT);
+	w = 8.0;
+	h = 4.0;
+
+	for (deg = 0; deg < 360.0f; deg += 1.0f) {
+		x = w + (int)(w * cos(DEG_TO_RAD(deg)));
+		y = h + (int)(h * sin(DEG_TO_RAD(deg)));
+
+		mvwaddch(element->element, y, x, 'O');
+	}
+}
+
+static void draw_x(Grid *element)
+{
+	int i;
+	int xpos, ypos;
+
+	wattrset(element->element, A_STANDOUT);
+
+	for (i = 1; i < (ELEMENT_HT - 1); i++) {
+		ypos = i;
+		xpos = i*2;
+		mvwaddch(element->element, ypos, xpos, 'X');
+		mvwaddch(element->element, ypos, xpos+1, 'X');
+		mvwaddch(element->element, ypos, ELEMENT_WD-3-xpos, 'X');
+		mvwaddch(element->element, ypos, ELEMENT_WD-4-xpos, 'X');
+	}
+
+}
+
+static void draw_grid(ttt *t)
+{
+	int i, j;
+
+	for (i = 0; i < 3; i++) {
+		for (j = 0; j < 3; j++) {
+			t->grid[i][j].element = derwin(t->board,
+						       ELEMENT_HT,
+						       ELEMENT_WD,
+						       i*ELEMENT_HT,
+						       j*ELEMENT_WD);
+			t->grid[i][j].type = ELEMENT_TYPE_NONE;
+			if (i == 0 && j == 0)
+				wattrset(t->grid[i][j].element, A_REVERSE);
+			_window_draw_box(t->grid[i][j].element
+					 , 0, 0, ELEMENT_HT, ELEMENT_WD,
+					 A_NORMAL, A_NORMAL);
+			wnoutrefresh(t->grid[i][j].element);
+		}
+	}
+}
+
+static void update_grid(ttt *t,
+			int selected_x,
+			int selected_y)
+{
+	int i, j;
+
+	for (i = 0; i < 3; i++) {
+		for (j = 0; j < 3; j++) {
+			t->grid[i][j].element = derwin(t->board,
+						       ELEMENT_HT,
+						       ELEMENT_WD,
+						       i*ELEMENT_HT,
+						       j*ELEMENT_WD);
+
+			if (i == selected_x && j == selected_y) {
+				wattrset(t->grid[i][j].element, A_REVERSE);
+			} else {
+				wattrset(t->grid[i][j].element, 0);
+			}
+
+			_window_draw_box(t->grid[i][j].element
+					 , 0, 0, ELEMENT_HT, ELEMENT_WD,
+					 A_NORMAL, A_NORMAL);
+
+			if (t->grid[i][j].type == ELEMENT_TYPE_X)
+				draw_x(&t->grid[i][j]);
+			else if (t->grid[i][j].type == ELEMENT_TYPE_O)
+				draw_o(&t->grid[i][j]);
+
+			wnoutrefresh(t->grid[i][j].element);
+		}
+	}
+}
+
 static void draw_board(ttt *t)
 {
-	//WINDOW *win = _window_draw_box();
+	int xpos, ypos;
+	int height, width;
+
+	_window_clear(t);
+
+	/* The border */
+	/*
+	height = 33;
+	width = 65;
+	xpos = (getmaxx(stdscr) - width) / 2;
+	ypos = (getmaxy(stdscr) - height) / 2;
+
+	t->border = newwin(height, width, ypos, xpos);
+	keypad(t->border, TRUE);
+	_window_draw_box(t->border, 0, 0, height, width, A_BOLD, A_NORMAL);
+
+	wattrset(t->border, A_NORMAL);
+	wbkgdset(t->border, A_NORMAL & A_COLOR);
+
+	touchwin(t->border);
+	wnoutrefresh(t->border);
+	*/
+
+	/* the board outline */
+	height = 30;
+	width = 60;
+	xpos = (getmaxx(stdscr) - width) / 2;
+	ypos = (getmaxy(stdscr) - height) / 2;
+
+	t->board = newwin(height, width, ypos, xpos);
+	keypad(t->board, TRUE);
+
+	wattrset(t->board, A_NORMAL);
+	wbkgdset(t->board, A_NORMAL & A_COLOR);
+
+	touchwin(t->board);
+	wnoutrefresh(t->board);
+
+	/* the grid */
+	draw_grid(t);
+
+	wnoutrefresh(t->board);
 }
+
+static void do_key_up(ttt *t, int *cur_x_pos, int *cur_y_pos)
+{
+	if ((*cur_x_pos - 1) >= 0)
+		*cur_x_pos = *cur_x_pos - 1;
+	else
+		*cur_x_pos = 2 - *cur_x_pos;
+}
+
+static void do_key_down(ttt *t, int *cur_x_pos, int *cur_y_pos)
+{
+	if ((*cur_x_pos + 1) > 2)
+		*cur_x_pos = 0;
+	else
+		*cur_x_pos = *cur_x_pos + 1;
+}
+
+static void do_key_left(ttt *t, int *cur_x_pos, int *cur_y_pos)
+{
+	if ((*cur_y_pos - 1) >= 0)
+		*cur_y_pos = *cur_y_pos - 1;
+	else
+		*cur_y_pos = 2 - *cur_y_pos;
+}
+
+static void do_key_right(ttt *t, int *cur_x_pos, int *cur_y_pos)
+{
+	if ((*cur_y_pos + 1) > 2)
+		*cur_y_pos = 0;
+	else
+		*cur_y_pos = *cur_y_pos + 1;
+}
+
+static void game_loop(ttt *t)
+{
+	int ch = 0;
+	int cur_x_pos = 0;
+	int cur_y_pos = 0;
+
+	nodelay(stdscr, FALSE);
+
+	do {
+
+		ch = getch();
+
+		if (ch == KEY_ESC || ch == 'q' || ch == 'Q')
+			break;
+
+		switch(ch) {
+		case KEY_UP:
+		case 'W':
+		case 'w':
+			do_key_up(t, &cur_x_pos, &cur_y_pos);
+			break;
+		case KEY_DOWN:
+		case 'S':
+		case 's':
+			do_key_down(t, &cur_x_pos, &cur_y_pos);
+			break;
+		case KEY_LEFT:
+		case 'A':
+		case 'a':
+			do_key_left(t, &cur_x_pos, &cur_y_pos);
+			break;
+		case KEY_RIGHT:
+		case 'D':
+		case 'd':
+			do_key_right(t, &cur_x_pos, &cur_y_pos);
+			break;
+		case 'o':
+		case 'O':
+			if (t->grid[cur_x_pos][cur_y_pos].type == ELEMENT_TYPE_NONE) {
+				t->grid[cur_x_pos][cur_y_pos].type = ELEMENT_TYPE_O;
+				draw_o(&t->grid[cur_x_pos][cur_y_pos]);
+			}
+			break;
+		case 'x':
+		case 'X':
+			if (t->grid[cur_x_pos][cur_y_pos].type == ELEMENT_TYPE_NONE) {
+				t->grid[cur_x_pos][cur_y_pos].type = ELEMENT_TYPE_X;
+				draw_x(&t->grid[cur_x_pos][cur_y_pos]);
+			}
+			break;
+		case '\n':
+			break;
+		default:
+			continue;
+		}
+
+		update_grid(t, cur_x_pos, cur_y_pos);
+		refresh();
+
+	} while (1);
+
+	nodelay(stdscr, FALSE);
+}
+
 
 int main(int argc, char **argv)
 {
@@ -251,22 +509,17 @@ int main(int argc, char **argv)
 	signal(SIGINT, termination_handler);
 
 	if (screen_init() != 0) {
-		perror("Error initialising ncurses");
 		exit(EXIT_FAILURE);
 	}
 
-	t.board = newwin(10, 10, 20, 20);
-	box(t.board, '|', '-');
-	touchwin(t.board);
-	wrefresh(t.board);
-	keypad(t.board, TRUE);
+	t.title = "Tic-Tac-Toe";
 
 	draw_board(&t);
+	refresh();
 
-	getchar();
+	game_loop(&t);
 
 	screen_fin();
 
 	exit(EXIT_SUCCESS);
 }
-
