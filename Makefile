@@ -15,11 +15,20 @@ LIBS = -lncurses -lm
 CFLAGS = $(DEBUG) $(EXTRA_CFLAGS) $(OSFLAGS)
 DEFS = -DPACKAGE=$(PACKAGE) -DVERSION=$(VERSION) -DTIOCGWINSZ
 
-all: main.o
-	$(CC) $(CFLAGS) $(LIBS) main.o -o ttt
+all: main.o window.o game.o draw.o
+	$(CC) $(CFLAGS) $(LIBS) main.o window.o game.o draw.o -o ttt
 
-main.o: main.c
+main.o: main.c ttt.h
 	$(CC) $(CFLAGS) $(DEFS) -c main.c
+
+window.o: window.c window.h
+	$(CC) $(CFLAGS) $(DEFS) -c window.c
+
+game.o: game.c game.h
+	$(CC) $(CFLAGS) $(DEFS) -c game.c
+
+draw.o: draw.c draw.h
+	$(CC) $(CFLAGS) $(DEFS) -c draw.c
 
 clean:
 	rm -f ttt *.o
