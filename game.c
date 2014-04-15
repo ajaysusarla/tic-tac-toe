@@ -20,6 +20,20 @@
 #include "draw.h"
 
 
+static void get_cur_pos(ttt *t, int *cur_x_pos, int *cur_y_pos)
+{
+	if (t != NULL) {
+		*cur_x_pos = t->cur_x;
+		*cur_y_pos = t->cur_y;
+	}
+}
+
+static void set_cur_pos(ttt *t, int cur_x_pos, int cur_y_pos)
+{
+	t->cur_x = cur_x_pos;
+	t->cur_y = cur_y_pos;
+}
+
 static void do_key_up(ttt *t, int *cur_x_pos, int *cur_y_pos)
 {
 	if ((*cur_x_pos - 1) >= 0)
@@ -52,6 +66,113 @@ static void do_key_right(ttt *t, int *cur_x_pos, int *cur_y_pos)
 		*cur_y_pos = *cur_y_pos + 1;
 }
 
+static GameState check_row_1(ttt *t, ElementType type)
+{
+	if (t->grid[0][0].type == type &&
+	    t->grid[0][1].type == type &&
+	    t->grid[0][2].type == type)
+		return GAME_STATE_COMPLETE;
+	else
+		return GAME_STATE_INCOMPLETE;
+}
+
+static GameState check_row_2(ttt *t, ElementType type)
+{
+	if (t->grid[1][0].type == type &&
+	    t->grid[1][1].type == type &&
+	    t->grid[1][2].type == type)
+		return GAME_STATE_COMPLETE;
+	else
+		return GAME_STATE_INCOMPLETE;
+}
+
+static GameState check_row_3(ttt *t, ElementType type)
+{
+	if (t->grid[2][0].type == type &&
+	    t->grid[2][1].type == type &&
+	    t->grid[2][2].type == type)
+		return GAME_STATE_COMPLETE;
+	else
+		return GAME_STATE_INCOMPLETE;
+}
+
+static GameState check_col_1(ttt *t, ElementType type)
+{
+	if (t->grid[0][0].type == type &&
+	    t->grid[1][0].type == type &&
+	    t->grid[2][0].type == type)
+		return GAME_STATE_COMPLETE;
+	else
+		return GAME_STATE_INCOMPLETE;
+}
+
+static GameState check_col_2(ttt *t, ElementType type)
+{
+	if (t->grid[0][1].type == type &&
+	    t->grid[1][1].type == type &&
+	    t->grid[2][1].type == type)
+		return GAME_STATE_COMPLETE;
+	else
+		return GAME_STATE_INCOMPLETE;
+}
+
+static GameState check_col_3(ttt *t, ElementType type)
+{
+	if (t->grid[0][2].type == type &&
+	    t->grid[1][2].type == type &&
+	    t->grid[2][2].type == type)
+		return GAME_STATE_COMPLETE;
+	else
+		return GAME_STATE_INCOMPLETE;
+}
+
+static GameState check_dia_1(ttt *t, ElementType type)
+{
+	if (t->grid[0][0].type == type &&
+	    t->grid[1][1].type == type &&
+	    t->grid[2][2].type == type)
+		return GAME_STATE_COMPLETE;
+	else
+		return GAME_STATE_INCOMPLETE;
+}
+
+static GameState check_dia_2(ttt *t, ElementType type)
+{
+	if (t->grid[0][2].type == type &&
+	    t->grid[1][1].type == type &&
+	    t->grid[2][0].type == type)
+		return GAME_STATE_COMPLETE;
+	else
+		return GAME_STATE_INCOMPLETE;
+}
+
+static GameState check_for_win(ttt *t, ElementType type)
+{
+	GameState state;
+
+	if (check_row_1(t, type) == GAME_STATE_COMPLETE) {
+		state = GAME_STATE_COMPLETE;
+	} else if (check_row_2(t, type) == GAME_STATE_COMPLETE) {
+		state = GAME_STATE_COMPLETE;
+	} else if (check_row_3(t, type) == GAME_STATE_COMPLETE) {
+		state = GAME_STATE_COMPLETE;
+	} else if (check_col_1(t, type) == GAME_STATE_COMPLETE) {
+		state = GAME_STATE_COMPLETE;
+	} else if (check_col_2(t, type) == GAME_STATE_COMPLETE) {
+		state = GAME_STATE_COMPLETE;
+	} else if (check_col_3(t, type) == GAME_STATE_COMPLETE) {
+		state = GAME_STATE_COMPLETE;
+	} else if (check_dia_1(t, type) == GAME_STATE_COMPLETE) {
+		state = GAME_STATE_COMPLETE;
+	} else if (check_dia_2(t, type) == GAME_STATE_COMPLETE) {
+		state = GAME_STATE_COMPLETE;
+	} else {
+		state = GAME_STATE_INCOMPLETE;
+	}
+
+	return state;
+}
+
 void game_loop(ttt *t)
 {
 	int ch = 0;
@@ -61,6 +182,8 @@ void game_loop(ttt *t)
 	nodelay(stdscr, FALSE);
 
 	do {
+		ElementType type;
+		type = ELEMENT_TYPE_NONE;
 
 		ch = getch();
 
@@ -91,14 +214,16 @@ void game_loop(ttt *t)
 		case 'o':
 		case 'O':
 			if (t->grid[cur_x_pos][cur_y_pos].type == ELEMENT_TYPE_NONE) {
-				t->grid[cur_x_pos][cur_y_pos].type = ELEMENT_TYPE_O;
+				type = ELEMENT_TYPE_O;
+				t->grid[cur_x_pos][cur_y_pos].type = type;
 				draw_o(&t->grid[cur_x_pos][cur_y_pos]);
 			}
 			break;
 		case 'x':
 		case 'X':
 			if (t->grid[cur_x_pos][cur_y_pos].type == ELEMENT_TYPE_NONE) {
-				t->grid[cur_x_pos][cur_y_pos].type = ELEMENT_TYPE_X;
+				type = ELEMENT_TYPE_X;
+				t->grid[cur_x_pos][cur_y_pos].type = type;
 				draw_x(&t->grid[cur_x_pos][cur_y_pos]);
 			}
 			break;
@@ -109,6 +234,11 @@ void game_loop(ttt *t)
 		}
 
 		redraw_grid(t, cur_x_pos, cur_y_pos);
+		set_cur_pos(t, cur_x_pos, cur_y_pos);
+		if ((type != ELEMENT_TYPE_NONE) &&
+		    (check_for_win(t, type) == GAME_STATE_COMPLETE)) {
+			mvwaddstr(stdscr, 0, 1, "Game WON!!!");
+		}
 		refresh();
 
 	} while (1);
