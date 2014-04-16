@@ -19,6 +19,13 @@
 #include "draw.h"
 #include "window.h"
 
+#define BOARD_WIDTH  60
+#define BOARD_HEIGHT 30
+#define MSG_BOX_WIDTH 60
+#define MSG_BOX_HEIGHT 7
+#define PLAYER_BOX_WIDTH 60
+#define PLAYER_BOX_HEIGHT 3
+
 void draw_o(Grid *element)
 {
 	float deg, w, h;
@@ -113,7 +120,6 @@ void redraw_grid(ttt *t,
 void draw_board(ttt *t)
 {
 	int xpos, ypos;
-	int height, width;
 
 	window_clear(t);
 
@@ -135,13 +141,11 @@ void draw_board(ttt *t)
 	wnoutrefresh(t->border);
 	*/
 
-	/* the board outline */
-	height = 30;
-	width = 60;
-	xpos = (getmaxx(stdscr) - width) / 2;
-	ypos = (getmaxy(stdscr) - height) / 2;
+	/* the board at the center of the screen */
+	xpos = (getmaxx(stdscr) - BOARD_WIDTH) / 2;
+	ypos = (getmaxy(stdscr) - BOARD_HEIGHT) / 2;
 
-	t->board = newwin(height, width, ypos, xpos);
+	t->board = newwin(BOARD_HEIGHT, BOARD_WIDTH, ypos, xpos);
 	keypad(t->board, TRUE);
 
 	wattrset(t->board, A_NORMAL);
@@ -153,6 +157,35 @@ void draw_board(ttt *t)
 	/* the grid */
 	draw_grid(t);
 
+	/* message box */
+	xpos = (getmaxx(stdscr) - MSG_BOX_WIDTH) / 2;
+	ypos = (getmaxy(stdscr) - MSG_BOX_HEIGHT);
+	t->msg = newwin(MSG_BOX_HEIGHT, MSG_BOX_WIDTH, ypos, xpos);
+
+	window_draw_edge(t->msg,
+			 0, 0,
+			 MSG_BOX_HEIGHT, MSG_BOX_WIDTH,
+			 A_BOLD, A_NORMAL);
+
+	wattrset(t->msg, A_NORMAL);
+	wbkgdset(t->msg, A_NORMAL & A_COLOR);
+
+	touchwin(t->msg);
+	wnoutrefresh(t->msg);
+
+	/* player box */
+	xpos = (getmaxx(stdscr) - PLAYER_BOX_WIDTH) / 2;
+	ypos = 2;
+	t->player = newwin(PLAYER_BOX_HEIGHT, PLAYER_BOX_WIDTH, ypos, xpos);
+	window_draw_edge(t->player,
+			0, 0,
+			PLAYER_BOX_HEIGHT, PLAYER_BOX_WIDTH,
+			A_BOLD, A_NORMAL);
+	wattrset(t->player, A_NORMAL);
+	wbkgdset(t->player, A_NORMAL & A_COLOR);
+
+	touchwin(t->player);
+	wnoutrefresh(t->player);
+
 	wnoutrefresh(t->board);
 }
-

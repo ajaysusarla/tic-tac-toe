@@ -64,6 +64,7 @@ struct _ttt {
 	const char *title;
 	WINDOW *border;
 	WINDOW *board;
+	WINDOW *player;
 	WINDOW *msg;
 	Grid grid[3][3];
 	int cur_x;
