@@ -75,8 +75,8 @@ void draw_grid(ttt *t)
 			t->grid[i][j].type = ELEMENT_TYPE_NONE;
 			if (i == 0 && j == 0)
 				wattrset(t->grid[i][j].element, A_REVERSE);
-			window_draw_box(t->grid[i][j].element
-					, 0, 0, ELEMENT_HT, ELEMENT_WD,
+			window_draw_box(t->grid[i][j].element,
+					0, 0, ELEMENT_HT, ELEMENT_WD,
 					A_NORMAL, A_NORMAL);
 			wnoutrefresh(t->grid[i][j].element);
 		}
@@ -103,8 +103,8 @@ void redraw_grid(ttt *t,
 				wattrset(t->grid[i][j].element, 0);
 			}
 
-			window_draw_box(t->grid[i][j].element
-					, 0, 0, ELEMENT_HT, ELEMENT_WD,
+			window_draw_box(t->grid[i][j].element,
+					0, 0, ELEMENT_HT, ELEMENT_WD,
 					A_NORMAL, A_NORMAL);
 
 			if (t->grid[i][j].type == ELEMENT_TYPE_X)
@@ -112,6 +112,7 @@ void redraw_grid(ttt *t,
 			else if (t->grid[i][j].type == ELEMENT_TYPE_O)
 				draw_o(&t->grid[i][j]);
 
+			keypad(t->grid[i][j].element, TRUE);
 			wnoutrefresh(t->grid[i][j].element);
 		}
 	}
@@ -120,6 +121,7 @@ void redraw_grid(ttt *t,
 void draw_board(ttt *t)
 {
 	int xpos, ypos;
+	int i;
 
 	window_clear(t);
 
@@ -177,12 +179,20 @@ void draw_board(ttt *t)
 	xpos = (getmaxx(stdscr) - PLAYER_BOX_WIDTH) / 2;
 	ypos = 2;
 	t->player = newwin(PLAYER_BOX_HEIGHT, PLAYER_BOX_WIDTH, ypos, xpos);
-	window_draw_edge(t->player,
-			0, 0,
-			PLAYER_BOX_HEIGHT, PLAYER_BOX_WIDTH,
-			A_BOLD, A_NORMAL);
+
 	wattrset(t->player, A_NORMAL);
 	wbkgdset(t->player, A_NORMAL & A_COLOR);
+
+	/* box */
+	for (i = 0; i < 2; i++) {
+		t->p[i] = derwin(t->player, 3, 30, 0, i*30);
+		window_draw_edge(t->p[i],
+				 0, 0,
+				 3, 30,
+				 A_NORMAL, A_NORMAL);
+		touchwin(t->p[i]);
+		wnoutrefresh(t->p[i]);
+	}
 
 	touchwin(t->player);
 	wnoutrefresh(t->player);
