@@ -67,6 +67,29 @@ void window_draw_box(WINDOW *win,
 	}
 }
 
+void window_draw_edge(WINDOW *win,
+		      int y, int x,
+		      int height, int width,
+		      chtype box, chtype border)
+{
+	int i, j;
+
+	for (i = 0; i < height; i++) {
+		wmove(win, y + i, x);
+		for (j = 0; j < width - 2; j++)
+			if (!i && !j)
+				waddch(win, border | ACS_ULCORNER);
+			else if (i == height - 1 && !j)
+				waddch(win, border | ACS_LLCORNER);
+			else if (!i && j == width - 3)
+				waddch(win, box | ACS_URCORNER);
+			else if (i == height - 1 && j == width - 3)
+				waddch(win, box | ACS_LRCORNER);
+			else
+				waddch(win, box | ' ');
+	}
+}
+
 void window_clear(ttt *t)
 {
 	_window_attr_clear(stdscr, LINES, COLS, A_NORMAL);

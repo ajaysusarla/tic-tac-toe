@@ -28,6 +28,11 @@ void window_draw_box(WINDOW *win,
 		     int height, int width,
 		     chtype box, chtype border);
 
+void window_draw_edge(WINDOW *win,
+		      int y, int x,
+		      int height, int width,
+		      chtype box, chtype border);
+
 void window_clear(ttt *t);
 
 #endif /* WINDOW_H */
