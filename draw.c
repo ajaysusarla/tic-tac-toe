@@ -125,24 +125,6 @@ void draw_board(ttt *t)
 
 	window_clear(t);
 
-	/* The border */
-	/*
-	height = 33;
-	width = 65;
-	xpos = (getmaxx(stdscr) - width) / 2;
-	ypos = (getmaxy(stdscr) - height) / 2;
-
-	t->border = newwin(height, width, ypos, xpos);
-	keypad(t->border, TRUE);
-	_window_draw_box(t->border, 0, 0, height, width, A_BOLD, A_NORMAL);
-
-	wattrset(t->border, A_NORMAL);
-	wbkgdset(t->border, A_NORMAL & A_COLOR);
-
-	touchwin(t->border);
-	wnoutrefresh(t->border);
-	*/
-
 	/* the board at the center of the screen */
 	xpos = (getmaxx(stdscr) - BOARD_WIDTH) / 2;
 	ypos = (getmaxy(stdscr) - BOARD_HEIGHT) / 2;

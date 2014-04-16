@@ -62,7 +62,6 @@ struct _Grid{
 
 struct _ttt {
 	const char *title;
-	WINDOW *border;
 	WINDOW *board;
 	WINDOW *player;
 	WINDOW *p[2];
