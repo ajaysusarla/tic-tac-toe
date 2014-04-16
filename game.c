@@ -217,6 +217,7 @@ void game_loop(ttt *t)
 				type = ELEMENT_TYPE_O;
 				t->grid[cur_x_pos][cur_y_pos].type = type;
 				draw_o(&t->grid[cur_x_pos][cur_y_pos]);
+				wnoutrefresh(t->board);
 			}
 			break;
 		case 'x':
@@ -225,6 +226,7 @@ void game_loop(ttt *t)
 				type = ELEMENT_TYPE_X;
 				t->grid[cur_x_pos][cur_y_pos].type = type;
 				draw_x(&t->grid[cur_x_pos][cur_y_pos]);
+				wnoutrefresh(t->board);
 			}
 			break;
 		case '\n':
@@ -237,7 +239,8 @@ void game_loop(ttt *t)
 		set_cur_pos(t, cur_x_pos, cur_y_pos);
 		if ((type != ELEMENT_TYPE_NONE) &&
 		    (check_for_win(t, type) == GAME_STATE_COMPLETE)) {
-			mvwaddstr(stdscr, 0, 1, "Game WON!!!");
+			mvwaddstr(t->msg, 3, 25, "Game WON!!!");
+			wnoutrefresh(t->msg);
 		}
 		refresh();
 
