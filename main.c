@@ -140,7 +140,8 @@ static int screen_init(void)
 		return -1;
 	}
 
-	if (getmaxx(stdscr) < 140 && getmaxy(stdscr) < 40) {
+
+	if (getmaxx(stdscr) < 65 && getmaxy(stdscr) < 40) {
 		endwin();
 		fprintf(stderr, "we need screensize more than 140x40\n");
 		return -1;
@@ -158,6 +159,7 @@ static int screen_init(void)
 
 static void screen_fin(void)
 {
+	/* Delete windows */
 	endwin();
 }
 
@@ -181,12 +183,21 @@ int main(int argc, char **argv)
 
 	t.title = "Tic-Tac-Toe";
 
+	t.game = game_new();
+	game_init_single_player(t.game);
+//	game_init_single_player_computer_first(t.game);
+
 	draw_board(&t);
+
+	player_boxes_refresh_title(&t);
+
 	refresh();
 
 	game_loop(&t);
 
 	screen_fin();
+
+	game_free(t.game);
 
 	exit(EXIT_SUCCESS);
 }

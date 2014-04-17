@@ -22,15 +22,22 @@
 #include <ncurses.h>
 #include <math.h>
 
+#define PLAYER1_STRING  "  PLAYER 1  "
+#define PLAYER2_STRING  "  PLAYER 2  "
+#define YOU_STRING      "    YOU     "
+#define COMPUTER_STRING "  COMPUTER  "
+
 typedef enum _ElementType ElementType;
 typedef enum _PlayerType PlayerType;
 typedef enum _GameType GameType;
 typedef enum _GameState GameState;
+typedef struct _Game Game;
+typedef struct _Player Player;
 typedef struct _Grid Grid;
 typedef struct _ttt ttt;
 
 enum _ElementType {
-	ELEMENT_TYPE_X,
+	ELEMENT_TYPE_X = 0,
 	ELEMENT_TYPE_O,
 	ELEMENT_TYPE_NONE,
 	NUM_ELEMENTS,
@@ -53,6 +60,20 @@ enum _GameState {
 	GAME_STATE_COMPLETE,
 	GAME_STATE_INCOMPLETE,
 };
+
+struct _Player {
+	PlayerType player;
+	ElementType element;
+	char *player_str;
+};
+
+struct _Game {
+	GameType game_type;
+	Player player[2];
+	Player *cur_player;
+	GameState game_state;
+};
+
 struct _Grid{
 	WINDOW *element;
 	ElementType type;
@@ -67,10 +88,9 @@ struct _ttt {
 	WINDOW *p[2];
 	WINDOW *msg;
 	Grid grid[3][3];
+	Game *game;
 	int cur_x;
 	int cur_y;
-	GameType game_type;
-	PlayerType cur_player;
 };
 
 #define DEG_TO_RAD(deg) (deg * (180.0f/M_PI))

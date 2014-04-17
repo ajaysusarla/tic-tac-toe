@@ -118,10 +118,27 @@ void redraw_grid(ttt *t,
 	}
 }
 
+void draw_player_boxes(ttt *t, int user)
+{
+	int i;
+
+	for (i = 0; i < 2; i++) {
+		t->p[i] = derwin(t->player, 3, 30, 0, i*30);
+		if (i == user)
+			wattrset(t->p[i], A_REVERSE);
+
+		window_draw_edge(t->p[i],
+				 0, 0,
+				 3, 30,
+				 A_NORMAL, A_NORMAL);
+		touchwin(t->p[i]);
+		wnoutrefresh(t->p[i]);
+	}
+}
+
 void draw_board(ttt *t)
 {
 	int xpos, ypos;
-	int i;
 
 	window_clear(t);
 
@@ -166,15 +183,7 @@ void draw_board(ttt *t)
 	wbkgdset(t->player, A_NORMAL & A_COLOR);
 
 	/* box */
-	for (i = 0; i < 2; i++) {
-		t->p[i] = derwin(t->player, 3, 30, 0, i*30);
-		window_draw_edge(t->p[i],
-				 0, 0,
-				 3, 30,
-				 A_NORMAL, A_NORMAL);
-		touchwin(t->p[i]);
-		wnoutrefresh(t->p[i]);
-	}
+	draw_player_boxes(t, 0);
 
 	touchwin(t->player);
 	wnoutrefresh(t->player);

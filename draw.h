@@ -28,7 +28,7 @@ void draw_grid(ttt *t);
 void redraw_grid(ttt *t,
 		 int selected_x,
 		 int selected_y);
-
+void draw_player_boxes(ttt *t, int user);
 void draw_board(ttt *t);
 
 #endif /* DRAW_H */

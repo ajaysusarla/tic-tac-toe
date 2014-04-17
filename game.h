@@ -21,6 +21,12 @@
 
 #include "ttt.h"
 
+void player_boxes_refresh_title(ttt *t);
 void game_loop(ttt *t);
+Game * game_new(void);
+void game_free(Game *game);
+void game_init_single_player(Game *game);
+void game_init_single_player_computer_first(Game *game);
+void game_init_multi_player(Game *game);
 
 #endif /* GAME_H */
