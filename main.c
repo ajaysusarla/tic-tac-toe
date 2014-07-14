@@ -140,10 +140,10 @@ static int screen_init(void)
 		return -1;
 	}
 
-
-	if (getmaxx(stdscr) < 65 && getmaxy(stdscr) < 40) {
+	if (getmaxx(stdscr) < 65 || getmaxy(stdscr) < 40) {
 		endwin();
-		fprintf(stderr, "we need screensize more than 140x40\n");
+		fprintf(stderr, "Screensize less than 140x40 [current:%dx%d].\n",
+                        getmaxx(stdscr), getmaxy(stdscr));
 		return -1;
 	}
 
