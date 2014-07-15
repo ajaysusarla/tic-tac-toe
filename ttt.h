@@ -27,6 +27,8 @@
 #define YOU_STRING      "    YOU     "
 #define COMPUTER_STRING "  COMPUTER  "
 
+#define SWITCH_PLAYER -1
+
 typedef enum _ElementType ElementType;
 typedef enum _PlayerType PlayerType;
 typedef enum _GameType GameType;
@@ -44,10 +46,10 @@ enum _ElementType {
 };
 
 enum _PlayerType {
-	PLAYER_TYPE_PLAYER1,
-	PLAYER_TYPE_PLAYER2,
-	PLAYER_TYPE_COMPUTER,
-	PLAYER_TYPE_NONE
+        PLAYER_TYPE_COMPUTER = 1,
+	PLAYER_TYPE_PLAYER1 = -1,
+	PLAYER_TYPE_PLAYER2 = -2,
+	PLAYER_TYPE_NONE = 0
 };
 
 enum _GameType {
@@ -59,6 +61,7 @@ enum _GameType {
 enum _GameState {
 	GAME_STATE_COMPLETE,
 	GAME_STATE_INCOMPLETE,
+        GAME_STATE_DRAW,
 };
 
 struct _Player {
@@ -77,8 +80,6 @@ struct _Game {
 struct _Grid{
 	WINDOW *element;
 	ElementType type;
-	int xoff;
-	int yoff;
 };
 
 struct _ttt {
@@ -88,6 +89,8 @@ struct _ttt {
 	WINDOW *p[2];
 	WINDOW *msg;
 	Grid grid[3][3];
+        int arr[9]; /* Mapping of grid to an array */
+        int freecells;
 	Game *game;
 	int cur_x;
 	int cur_y;
